@@ -19,7 +19,7 @@ from utilities.image_processing import add_fps_count_overlay, rescale
 from utilities.ui_components import ConnectingOverlay, FileChooserPopup, TopBar
 from utilities.markerdata_logger import MarkerDataLogger
 from utilities.logger import log_message
-from config import ConfigModel
+from gelsight.config import ConfigModel
 import cv2
 import numpy as np
 from utilities.marker_tracker import MarkerTracker
@@ -318,7 +318,7 @@ class MarkerTrackerViewWidget(BoxLayout):
 
 if __name__ == "__main__":
     import argparse
-    from config import GSConfig
+    from gelsight.config import GSConfig
 
     parser = argparse.ArgumentParser(
         description="Run the Gelsight Mini Viewer with an optional config file."

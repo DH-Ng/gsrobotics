@@ -9,4 +9,3 @@ scipy>=1.13.0
 torch==2.6.0
 torch==2.6.0
 pygrabber
-

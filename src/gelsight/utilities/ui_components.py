@@ -69,7 +69,7 @@ class TopBar(BoxLayout):
                 color=(1, 1, 1, 1),
             )
         )
-        from utilities.gelsightmini import Camera
+        from ..gelsightmini import Camera
 
         available_devices = Camera.list_devices()
         spinner_values = [f"Device {k}" for k in sorted(available_devices.keys())]

@@ -1,0 +1,13 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+src/gelsight/__init__.py
+src/gelsight/gelsightmini.py
+src/gelsight/marker_tracker.py
+src/gelsight.egg-info/PKG-INFO
+src/gelsight.egg-info/SOURCES.txt
+src/gelsight.egg-info/dependency_links.txt
+src/gelsight.egg-info/not-zip-safe
+src/gelsight.egg-info/requires.txt
+src/gelsight.egg-info/top_level.txt

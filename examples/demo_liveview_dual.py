@@ -16,37 +16,38 @@ from kivy.graphics.texture import Texture
 
 from utilities.gelsightmini import GelSightMini
 from utilities.image_processing import add_fps_count_overlay, rescale
-from utilities.ui_components import ConnectingOverlay, FileChooserPopup, TopBar
-from config import ConfigModel
+from utilities.ui_components import ConnectingOverlay, FileChooserPopup, DualTopBar
+from gelsight.config import ConfigModel
 from utilities.logger import log_message
 
 Config.set("input", "mouse", "mouse,multitouch_on_demand")
 
 
-class GelsightMini(App):
+class DualGelsightMini(App):
     def __init__(self, config: ConfigModel, **kwargs):
         super().__init__(**kwargs)
-
         self.config = config
-        self.cam_stream = GelSightMini(
+        self.cam_stream1 = GelSightMini(
             target_width=self.config.camera_width,
             target_height=self.config.camera_height,
             border_fraction=self.config.border_fraction,
         )
+        self.cam_stream2 = GelSightMini(
+            target_width=self.config.second_camera_width,
+            target_height=self.config.second_camera_height,
+            border_fraction=self.config.border_fraction,
+        )
 
     def build(self):
-        self.title = "Gelsight Mini Viewer"
+        self.title = "Gelsight Mini Dual Viewer"
         self.loading_overlay = None
-
         root = BoxLayout(orientation="vertical")
-        # Top bar with device selection
-        self.top_bar = TopBar(on_device_selected_callback=self.restart_camera_stream)
+        self.top_bar = DualTopBar(
+            on_device_selected_callback=self.on_dual_device_selected
+        )
         root.add_widget(self.top_bar)
-
-        # Create LiveViewWidget and pass the app instance so it has access to camstream and other properties.
-        self.live_view = LiveViewWidget(main_app=self)
+        self.live_view = DualLiveViewWidget(main_app=self)
         root.add_widget(self.live_view)
-
         return root
 
     def show_overlay(self, message):
@@ -59,28 +60,40 @@ class GelsightMini(App):
             self.loading_overlay.dismiss()
             self.loading_overlay = None
 
-    def restart_camera_stream(self, device_index):
-        self.cam_stream.select_device(device_index)
-        from kivy.clock import Clock
+    def on_dual_device_selected(self, device_indices):
+        # Only start feeds if both device indices are valid and not the default text
+        idx1, idx2 = (
+            device_indices if isinstance(device_indices, (list, tuple)) else (0, 1)
+        )
+        if isinstance(idx1, int) and isinstance(idx2, int) and idx1 != idx2:
+            self.restart_camera_streams((idx1, idx2))
 
+    def restart_camera_streams(self, device_indices):
+        # device_indices should be a tuple/list: (idx1, idx2)
+        idx1, idx2 = (
+            device_indices if isinstance(device_indices, (list, tuple)) else (0, 1)
+        )
+        self.cam_stream1.select_device(idx1)
+        self.cam_stream2.select_device(idx2)
         Clock.schedule_once(lambda dt: self.finish_device_selection(), 0)
 
     def finish_device_selection(self):
         self.hide_overlay()
-        self.cam_stream.start()
+        self.cam_stream1.start()
+        self.cam_stream2.start()
         self.live_view.start()
 
 
-class LiveViewWidget(BoxLayout):
-    def __init__(self, main_app: GelsightMini, **kwargs):
+class DualLiveViewWidget(BoxLayout):
+    def __init__(self, main_app: DualGelsightMini, **kwargs):
         super().__init__(orientation="vertical", **kwargs)
         self.main_app = main_app
-
-        # Create UI elements:
-        self.image_widget = Image()
-        self.add_widget(self.image_widget)
-
-        # Zoom slider layout
+        images_layout = BoxLayout(orientation="horizontal", size_hint_y=0.7)
+        self.image_widget1 = Image()
+        self.image_widget2 = Image()
+        images_layout.add_widget(self.image_widget1)
+        images_layout.add_widget(self.image_widget2)
+        self.add_widget(images_layout)
         zoom_layout = BoxLayout(
             orientation="horizontal", size_hint_y=None, height=dp(40)
         )
@@ -95,8 +108,6 @@ class LiveViewWidget(BoxLayout):
         )
         zoom_layout.add_widget(self.zoom_label)
         self.add_widget(zoom_layout)
-
-        # Folder selection layout
         folder_layout = BoxLayout(
             orientation="horizontal",
             size_hint_y=None,
@@ -119,8 +130,6 @@ class LiveViewWidget(BoxLayout):
         )
         folder_layout.add_widget(self.screenshot_folder_label)
         self.add_widget(folder_layout)
-
-        # Capture controls layout
         capture_layout = BoxLayout(
             orientation="horizontal",
             size_hint_y=None,
@@ -129,9 +138,9 @@ class LiveViewWidget(BoxLayout):
             padding=[dp(10)] * 4,
         )
         self.screenshot_btn = Button(
-            text="Save Image", size_hint=(None, None), size=(dp(180), dp(30))
+            text="Save Images", size_hint=(None, None), size=(dp(180), dp(30))
         )
-        self.screenshot_btn.bind(on_press=self.take_screenshot)
+        self.screenshot_btn.bind(on_press=self.take_screenshots)
         capture_layout.add_widget(self.screenshot_btn)
         self.recording_btn = Button(
             text="Start Recording", size_hint=(None, None), size=(dp(180), dp(30))
@@ -139,59 +148,72 @@ class LiveViewWidget(BoxLayout):
         self.recording_btn.bind(on_press=self.recording)
         capture_layout.add_widget(self.recording_btn)
         self.add_widget(capture_layout)
-
         self.add_widget(Widget(size_hint_y=None, height=dp(10)))
-
         self.screenshot_folder = os.path.join(os.path.expanduser("~"), "Desktop")
         self.event = None
-
-        # Bind key events for shortcuts
         Window.bind(on_key_down=self.on_key_down)
 
     def on_zoom_value_change(self, instance, value):
         self.zoom_label.text = f"{value:.1f}x"
 
     def start(self):
-        # Start the camera stream and schedule updates.
-        self.main_app.cam_stream.start()
+        self.main_app.cam_stream1.start()
+        self.main_app.cam_stream2.start()
         self.event = Clock.schedule_interval(self.update, 1 / 30.0)
 
     def update(self, dt):
-        frame = self.main_app.cam_stream.update(dt)
-        if frame is not None:
-            scale = self.zoom_slider.value
-            if scale != 1.0:
-                frame = rescale(frame, scale=scale)
-            add_fps_count_overlay(frame=frame, fps=self.main_app.cam_stream.fps)
-
-            texture = Texture.create(
-                size=(frame.shape[1], frame.shape[0]), colorfmt="rgb"
-            )
-            texture.blit_buffer(frame.tobytes(), colorfmt="rgb", bufferfmt="ubyte")
-            texture.flip_vertical()
-            self.image_widget.texture = texture
+        for idx, (cam_stream, image_widget) in enumerate(
+            [
+                (self.main_app.cam_stream1, self.image_widget1),
+                (self.main_app.cam_stream2, self.image_widget2),
+            ],
+            start=1,
+        ):
+            frame = cam_stream.update(dt)
+            if frame is not None:
+                scale = self.zoom_slider.value
+                if scale != 1.0:
+                    frame = rescale(frame, scale=scale)
+                add_fps_count_overlay(frame=frame, fps=cam_stream.fps)
+                texture = Texture.create(
+                    size=(frame.shape[1], frame.shape[0]), colorfmt="rgb"
+                )
+                texture.blit_buffer(frame.tobytes(), colorfmt="rgb", bufferfmt="ubyte")
+                texture.flip_vertical()
+                image_widget.texture = texture
 
     def stop(self):
         if self.event:
             self.event.cancel()
-        if self.main_app.cam_stream.camera:
-            self.main_app.cam_stream.camera.release()
+        for cam_stream in [self.main_app.cam_stream1, self.main_app.cam_stream2]:
+            if cam_stream.camera:
+                cam_stream.camera.release()
 
-    def take_screenshot(self, instance=None):
-        self.main_app.cam_stream.save_screenshot(filepath=self.screenshot_folder)
+    def take_screenshots(self, instance=None):
+        for idx, cam_stream in enumerate(
+            [self.main_app.cam_stream1, self.main_app.cam_stream2], start=1
+        ):
+            folder = os.path.join(self.screenshot_folder, f"cam{idx}")
+            os.makedirs(folder, exist_ok=True)
+            cam_stream.save_screenshot(filepath=folder)
 
     def recording(self, instance=None):
-        if self.main_app.cam_stream.recording:
-            self.main_app.cam_stream.stop_recording()
+        if self.main_app.cam_stream1.recording or self.main_app.cam_stream2.recording:
+            self.main_app.cam_stream1.stop_recording()
+            self.main_app.cam_stream2.stop_recording()
             self.recording_btn.text = "Start Recording"
         else:
-            self.main_app.cam_stream.start_recording(filepath=self.screenshot_folder)
+            for idx, cam_stream in enumerate(
+                [self.main_app.cam_stream1, self.main_app.cam_stream2], start=1
+            ):
+                folder = os.path.join(self.screenshot_folder, f"cam{idx}")
+                os.makedirs(folder, exist_ok=True)
+                cam_stream.start_recording(filepath=folder)
             self.recording_btn.text = "Stop Recording"
 
     def on_key_down(self, window, key, *args):
-        # Space key for screenshot
         if key == 32:
-            self.take_screenshot()
+            self.take_screenshots()
 
     def open_screenshot_folder_choice(self, instance):
         popup = FileChooserPopup(self.select_screenshot_folder)
@@ -207,10 +229,10 @@ class LiveViewWidget(BoxLayout):
 
 if __name__ == "__main__":
     import argparse
-    from config import GSConfig
+    from gelsight.config import GSConfig
 
     parser = argparse.ArgumentParser(
-        description="Run the Gelsight Mini Viewer with an optional config file."
+        description="Run the Gelsight Mini Dual Viewer with an optional config file."
     )
     parser.add_argument(
         "--gs-config",
@@ -218,9 +240,7 @@ if __name__ == "__main__":
         default=None,
         help="Path to the JSON configuration file. If not provided, default config is used.",
     )
-
     args = parser.parse_args()
-
     if args.gs_config is not None:
         log_message(f"Provided config path: {args.gs_config}")
     else:
@@ -232,6 +252,5 @@ if __name__ == "__main__":
             f"Using default_config variable from 'config.py' if './default_config.json' is not available"
         )
         args.gs_config = "default_config.json"
-
     gs_config = GSConfig(args.gs_config)
-    GelsightMini(config=gs_config.config).run()
+    DualGelsightMini(config=gs_config.config).run()

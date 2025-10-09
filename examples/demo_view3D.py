@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from config import ConfigModel
+from gelsight.config import ConfigModel
 from utilities.image_processing import (
     stack_label_above_image,
     apply_cmap,
@@ -173,7 +173,7 @@ def View3D(config: ConfigModel):
 
 if __name__ == "__main__":
     import argparse
-    from config import GSConfig
+    from gelsight.config import GSConfig
 
     parser = argparse.ArgumentParser(
         description="Run the Gelsight Mini Viewer with an optional config file."

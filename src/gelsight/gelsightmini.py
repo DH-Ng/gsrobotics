@@ -7,8 +7,8 @@ import os
 import re
 import datetime
 from typing import Optional
-from utilities.logger import log_message
-from utilities.image_processing import crop_and_resize
+from .utilities.logger import log_message
+from .utilities.image_processing import crop_and_resize
 
 
 class Camera:
@@ -85,10 +85,11 @@ class Camera:
 
     def find_cameras_windows(camera_name):
         from pygrabber.dshow_graph import FilterGraph
+
         graph = FilterGraph()
 
         # get the device name
-        allcams = graph.get_input_devices() # list of camera device
+        allcams = graph.get_input_devices()  # list of camera device
         description = ""
         for cam in allcams:
             if camera_name in cam:
@@ -100,9 +101,10 @@ class Camera:
             print("Device is not in this list")
             print(graph.get_input_devices())
             import sys
+
             sys.exit()
 
-        return (device,description)
+        return (device, description)
 
 
 class GelSightMini:
@@ -134,7 +136,6 @@ class GelSightMini:
         self.video_writer = None
         self.serial_number = None
 
-
     def get_device_list(self) -> dict:
         """
         Get a dictionary of available camera devices.
@@ -144,7 +145,6 @@ class GelSightMini:
         """
         return Camera.list_devices()
 
-
     def select_device(self, device_idx=None) -> None:
         """
         Select and open a camera device with the desired resolution.
@@ -153,21 +153,20 @@ class GelSightMini:
             device_idx (int): The index of the device to select.
         """
 
-        #print("platform: ", platform.system())
+        # print("platform: ", platform.system())
 
-        if device_idx==None and platform.system() == "Windows":
-                (dev, desc) = Camera.find_cameras_windows("GelSight Mini")
-                print("Found: ", desc, ", dev: ", dev)
-                device_idx = dev
-                # Parse serial number from description
-                match = re.search("[A-Z0-9]{4}-[A-Z0-9]{4}", desc)
-                if match:
-                    self.serial_number = match.group()
-
+        if device_idx == None and platform.system() == "Windows":
+            (dev, desc) = Camera.find_cameras_windows("GelSight Mini")
+            print("Found: ", desc, ", dev: ", dev)
+            device_idx = dev
+            # Parse serial number from description
+            match = re.search("[A-Z0-9]{4}-[A-Z0-9]{4}", desc)
+            if match:
+                self.serial_number = match.group()
 
         if platform.system() == "Linux":
             devices = Camera.list_devices()
-            for ix in range(0,len(devices)):
+            for ix in range(0, len(devices)):
                 print("Device: ", devices[ix])
             if isinstance(devices.get(device_idx), str):
                 device_id = devices[device_idx]
