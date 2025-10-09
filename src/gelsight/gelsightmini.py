@@ -165,6 +165,8 @@ class GelSightMini:
                 self.serial_number = match.group()
 
         if platform.system() == "Linux":
+            if device_idx is None:
+                device_idx = 0
             devices = Camera.list_devices()
             for ix in range(0, len(devices)):
                 print("Device: ", devices[ix])
