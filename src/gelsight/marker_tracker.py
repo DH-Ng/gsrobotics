@@ -7,10 +7,10 @@ import cv2
 from skimage.morphology import disk, closing
 from skimage import measure
 from scipy.ndimage import gaussian_filter, convolve
-from utilities.normxcorr2 import normxcorr2
+from gelsight.utilities.normxcorr2 import normxcorr2
 from enum import Enum
-from utilities.fit_grid import fit_grid, grid_spacing
-from utilities.logger import log_message
+from gelsight.utilities.fit_grid import fit_grid, grid_spacing
+from gelsight.utilities.logger import log_message
 
 GRID_STYLE_ALL = "all"
 GRID_STYLE_NO_BORDER = "no-border"

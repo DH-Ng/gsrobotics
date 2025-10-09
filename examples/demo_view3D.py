@@ -1,17 +1,17 @@
 import cv2
 import numpy as np
 from gelsight.config import ConfigModel
-from utilities.image_processing import (
+from gelsight.utilities.image_processing import (
     stack_label_above_image,
     apply_cmap,
     color_map_from_txt,
     normalize_array,
     trim_outliers,
 )
-from utilities.reconstruction import Reconstruction3D
-from utilities.visualization import Visualize3D
-from utilities.gelsightmini import GelSightMini
-from utilities.logger import log_message
+from gelsight.utilities.reconstruction import Reconstruction3D
+from gelsight.utilities.visualization import Visualize3D
+from gelsight.gelsightmini import GelSightMini
+from gelsight.utilities.logger import log_message
 
 
 def UpdateView(
@@ -23,7 +23,6 @@ def UpdateView(
     config: ConfigModel,
     window_title: str,
 ):
-
     # Compute depth map and gradients.
     depth_map, contact_mask, grad_x, grad_y = reconstruction.get_depthmap(
         image=image,

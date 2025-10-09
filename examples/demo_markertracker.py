@@ -14,15 +14,15 @@ from kivy.config import Config
 from kivy.metrics import dp
 from kivy.graphics.texture import Texture
 
-from utilities.gelsightmini import GelSightMini
-from utilities.image_processing import add_fps_count_overlay, rescale
-from utilities.ui_components import ConnectingOverlay, FileChooserPopup, TopBar
-from utilities.markerdata_logger import MarkerDataLogger
-from utilities.logger import log_message
+from gelsight.gelsightmini import GelSightMini
+from gelsight.utilities.image_processing import add_fps_count_overlay, rescale
+from gelsight.utilities.ui_components import ConnectingOverlay, FileChooserPopup, TopBar
+from gelsight.utilities.markerdata_logger import MarkerDataLogger
+from gelsight.utilities.logger import log_message
 from gelsight.config import ConfigModel
 import cv2
 import numpy as np
-from utilities.marker_tracker import MarkerTracker
+from gelsight.marker_tracker import MarkerTracker
 
 Config.set("input", "mouse", "mouse,multitouch_on_demand")
 
@@ -76,7 +76,6 @@ class GelsightMini(App):
 
 class MarkerTrackerViewWidget(BoxLayout):
     def __init__(self, main_app: GelsightMini, **kwargs):
-
         super().__init__(orientation="vertical", **kwargs)
         self.main_app = main_app
         self.initialized: bool = False
@@ -291,7 +290,6 @@ class MarkerTrackerViewWidget(BoxLayout):
             return
 
         if not self.is_logging_data:
-
             self.is_logging_data = True
             self.register_data_btn.text = "Save Data"
         else:

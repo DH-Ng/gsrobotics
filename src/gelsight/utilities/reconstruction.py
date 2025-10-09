@@ -4,9 +4,9 @@ import torch.nn.functional as F
 import numpy as np
 import os
 import cv2
-from utilities.poisson_solver import poisson_dct_neumann
-from utilities.image_processing import mask_from_range, remove_masked_area
-from utilities.logger import log_message
+from ..utilities.poisson_solver import poisson_dct_neumann
+from ..utilities.image_processing import mask_from_range, remove_masked_area
+from ..utilities.logger import log_message
 from typing import Optional
 
 
@@ -181,12 +181,10 @@ class Reconstruction3D:
 
         # Update zero depth map for the first 50 frames.
         if self.depth_map_zero_counter < 50:
-
             self.depth_map_zero += depth_map
             if self.depth_map_zero_counter == 0:
                 log_message("Zeroing depth. Please do not touch the sensor...")
             if self.depth_map_zero_counter == 49:
-
                 self.depth_map_zero /= (
                     self.depth_map_zero_counter + 1
                 )  # +1 to include current frame

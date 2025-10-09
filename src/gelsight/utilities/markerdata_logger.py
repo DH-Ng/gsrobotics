@@ -1,6 +1,6 @@
 import numpy as np
 from datetime import datetime
-from utilities.logger import log_message
+from ..utilities.logger import log_message
 import os
 
 

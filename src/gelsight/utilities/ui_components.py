@@ -106,7 +106,7 @@ class DualTopBar(BoxLayout):
         self.height = dp(50)
         self.padding = [dp(10)] * 4
 
-        from utilities.gelsightmini import Camera
+        from gelsight.gelsightmini import Camera
 
         available_devices = Camera.list_devices()
         spinner_values = [f"Device {k}" for k in sorted(available_devices.keys())]
