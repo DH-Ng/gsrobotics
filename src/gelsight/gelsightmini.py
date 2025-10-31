@@ -155,6 +155,8 @@ class GelSightMini:
 
         # print("platform: ", platform.system())
 
+        device_id = device_idx
+
         if device_idx == None and platform.system() == "Windows":
             (dev, desc) = Camera.find_cameras_windows("GelSight Mini")
             print("Found: ", desc, ", dev: ", dev)
@@ -168,12 +170,10 @@ class GelSightMini:
             if device_idx is None:
                 device_idx = 0
             devices = Camera.list_devices()
-            for ix in range(0, len(devices)):
-                print("Device: ", devices[ix])
+            # for ix in range(0, len(devices)):
+            #     print("Device: ", devices[ix])
             if isinstance(devices.get(device_idx), str):
                 device_id = devices[device_idx]
-        else:
-            device_id = device_idx
 
         if self.camera:
             self.camera.release()
@@ -201,6 +201,10 @@ class GelSightMini:
             log_message("Please select a device first!")
             return
         self.recording = False
+
+        # flush black frames
+        for _ in range(20):
+            self.camera.read_frame()
         self.frame_count = 0
 
     def start_recording(self, filepath: str = None) -> None:

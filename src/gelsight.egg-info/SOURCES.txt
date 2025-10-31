@@ -3,6 +3,7 @@ README.md
 pyproject.toml
 setup.py
 src/gelsight/__init__.py
+src/gelsight/config.py
 src/gelsight/gelsightmini.py
 src/gelsight/marker_tracker.py
 src/gelsight.egg-info/PKG-INFO

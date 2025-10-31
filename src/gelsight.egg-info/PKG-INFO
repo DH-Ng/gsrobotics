@@ -39,15 +39,13 @@ Dynamic: summary
 This respository contains python code to connect to the GelSight Mini hardware. The code demonstrates basic functionalities, such as viewing and saving data (e.g., images and video) from these devices, depth estimation, 3D point cloud and marker tracking. Any further information about Gelsight can be found on [gelsight.com](https://www.gelsight.com/)
 
 On this page, you will find
+ - Basic [Installation Instructions](#installation-instructions)
  - [Demo Scripts](#demo-scripts) for
    + [Live View](#liveview-demo)
    + [Live View Dual](#liveview-dual-demo)
    + [Marker tracking](#marker-tracker-demo)
    + [3D Viewer](#3d-viewer-demo)
    + [Basic OpenCV Demo](#basic-opencv-demo)
- - Detailed [Installation Instructions](#installation-instructions) for
-   + [Windows](#windows-installation-instructions)
-   + [Linux](#linux-installation-instructions)
  - [CAD Models](#cad-models) for
    + [GelSight Mini Case](#gelsight-mini-case)
    + [Schunk Gripper Adapter](#schunk-adapter)
@@ -55,11 +53,76 @@ On this page, you will find
    + [Kuka Adapter](#kuka-adapter)
   - [Frequently Asked Questions](#frequently-asked-questions)
 
+> [!Note]
+> Changes from this repository compared to the [original one](https://github.com/gelsightinc/gsrobotics):
+> - changed directory structure 
+> - code can be installed as a pip package now (module is called `gelsight`)
+> - slimmed down instructions
+
+# Installation Instructions
+
+1. Clone the repository
+```
+git clone https://github.com/DH-Ng/gsrobotics.git
+```
+
+2. Pip install the code
+```
+cd gsrobotics
+pip install .
+```
+
+## Test the Installation
+1. Plug the sensor in
+2. Run
+```sh
+python examples/demo_liveview.py
+```
+
+# Device setup
+
+The camera on the GelSight Mini is a USB camera.
+
+If you need to adjust the camera settings for your application, you can change the camera parameters using any app or library that can control UVC cameras.
+
+### Linux camera settings
+
+A popular library is [v4l2-ctl](https://manpages.ubuntu.com/manpages/bionic/man1/v4l2-ctl.1.html).
+To install this library on ubuntu run,
+
+    sudo apt-get update
+    sudo apt-get -y install v4l-utils
+
+Refer to file config/mini_set_cam_params.sh present in this repository to view/edit all the available camera parameters.
+You can list the devices by running:
+
+    v4l2-ctl --list-devices
+
+In most cases when you have one Mini connected to your computer, the device ID is usually 2, because the webcam on your computer is always on device ID 0.
+
+### Windows camera settings
+
+On Windows, you can use the AMCap app to configure the camera settings, see https://docs.arducam.com/UVC-Camera/Quick-Start-for-Different-Systems/Windows/
+
+## Possible errors
+
+### With cv2
+
+    pip uninstall opencv-python-headless
+
+### With Docker container
+
+    sudo apt-get install libopenjp2-7
+    sudo apt-get install qt5-default
+    pip3 install opencv-python==4.1.2.30
+    sudo apt-get install libopenexr-dev
+
+
 # Demo Scripts
 
 ## LiveView Demo
 
-1. Run `demo_liveview.py` in PyCharm. You should see a window app for live view session. On top bar you have device selection option. This is especially helpful if you have web cameras, or more than one GelSight Mini. Once a device is choosen, live feed should start.
+1. Run `python examples/demo_liveview.py`. You should see a window app for live view session. On top bar you have device selection option. This is especially helpful if you have web cameras, or more than one GelSight Mini. Once a device is choosen, live feed should start.
 <table>
 <tr><td>
 <img src="/docs/images/live_view_device_choice.png" alt="Demo Live View Device choice" height="400px">
@@ -93,16 +156,16 @@ The default location is the Desktop.
 1. Select **Save Image** button (or press **SPACEBAR**) to take screenshot of the current feed.
    File will be saved at **Data Folder** location as .png file.
 
-1. Select **Start Recording** button to start feed capture. Then pres **Stop Recording** to save
+2. Select **Start Recording** button to start feed capture. Then pres **Stop Recording** to save
    captured feed at **Data Folder** location as .mp4 file.
    
 ## Liveview Dual Demo
 
-1. Run `demo_liveview_dual.py` in PyCharm. This script is similar to `demo_liveview.py`, but it lets you view two camera feeds simultaneously. A windowed application for the live-view session will open. On the top bar you’ll find two device-selection drop-downs; use them to choose your cameras. This dual-selection interface is especially helpful when you have multiple camera devices connected. After selecting both devices, the live feeds should start automatically.
+1. Run `python examples/demo_liveview_dual.py`. This script is similar to `demo_liveview.py`, but it lets you view two camera feeds simultaneously. A windowed application for the live-view session will open. On the top bar you’ll find two device-selection drop-downs; use them to choose your cameras. This dual-selection interface is especially helpful when you have multiple camera devices connected. After selecting both devices, the live feeds should start automatically.
 
 ## Marker Tracker Demo
 
-1. Run `demo_markertracker.py` in PyCharm. You should se a window app for marker tracking session. On top bar you have device selection option.
+1. Run `python examples/demo_markertracker.py`. You should se a window app for marker tracking session. On top bar you have device selection option.
 Once a device is choosen, live feed should start.
 <table>
 <tr><td>
@@ -127,16 +190,16 @@ Once a device is choosen, live feed should start.
 
    Select **Data Folder** button to choose location of your captured markers movement. The default location one is desktop.
 
-1. Select **Start Recording** to start recording of markers movement.
+2. Select **Start Recording** to start recording of markers movement.
 
-1. Select **Save Data** to store current sequence. Each row of data (except for the first description row)
+3. Select **Save Data** to store current sequence. Each row of data (except for the first description row)
    forms a sequence x, y pairs (position x, position y) for all markers.
 
-1. Select **Reset Tracking** to reset current tracking (sometimes reset is needed when to large force is applied).
+4. Select **Reset Tracking** to reset current tracking (sometimes reset is needed when to large force is applied).
 
 ## 3D Viewer Demo
 
-1. Run `demo_view3D.py`in PyCharm. You should se a window app for live view session. By default you should two windows. One should consist
+1. Run `python examples/demo_view3D.py`. You should se a window app for live view session. By default you should see two windows. One should consist
    of three horizontally stacked views: camera feed, camera mask and depth estimation. The second window should show 3D pointcloud the 3D pointcloud.
    The camera ID is taken from the config settings.
 
@@ -166,7 +229,7 @@ Once a device is choosen, live feed should start.
 This demo shows how to grab images from the GelSight Mini and display them using
 OpenCV functions. 
 
-1. Run `opencv_liveview-demo.py` in PyCharm. 
+1. Run `python example/opencv_liveview-demo.py`. 
 
 <table>
 <tr><td>
@@ -231,211 +294,19 @@ An example `default_config.json` can be found in the root folder.
 
 **use_gpu**: `bool` -> When enabled, GPU will be used (if available) for neural network model inference.
 
-## Running scripts from terminal
-
-You can run python scripts directly from the PyCharm terminal. Go to the bottom left corner and click `Terminal` button (Alt + F12)
-
-<table>
-<tr><td>
-<img src="/docs/images/pycharm_terminal.png" alt="PyCharm terminal" style="height:300px; width:auto;">
-</td>
-</tr>
-<tr><td>PyCharm terminal</td>
-</tr>
-</table>
-
-PyCharm by default creates local envirnoment where it downloads all required packages. When running scripts using PyCharm run, this
-environment is automatically used. In terminal you need to be sure that the local enviroment is activated. To activate it (assuming that
-folder name is `.venv` and its placed at the root) you need to
-type
-
-#### Windows
-
-```sh
-# If using CMD
-.\.venv\Scripts\activate
-
-# If using PowerShell
-.\.venv\Scripts\Activate.ps1
-```
-
-#### Linux
-
-```sh
-source .venv/bin/activate
-```
-
-Once the environment is activated you should see its name in the paranthesees. In this case it should look like:
-
-<table>
-<tr><td>
-<img src="/docs/images/pycharm_venv_active.png" alt="PyCharm venv activated" style="height:200px; width:auto;">
-</td>
-</tr>
-<tr><td>PyCharm .venv activated</td>
-</tr>
-</table>
 
 For example, to run `demo_liveview.py` (assuming you are in the root folder) you need to type in terminal:
 
-#### Windows
-
 ```sh
-python demo_liveview.py
-```
-
-#### Linux
-
-```sh
-python demo_liveview.py
+python examples/demo_liveview.py
 ```
 
 You can pass as an optional argument a path to the config file. For example you could use `default_config.js` that
 is in the root folder:
 
-#### Windows
-
 ```sh
-python demo_liveview.py --gs-config default_config.json
-
+python examples/demo_liveview.py --gs-config default_config.json
 ```
-
-#### Linux
-
-```sh
-python demo_liveview.py --gs-config default_config.json
-```
-
-
-
-
-# Installation Instructions
-
-This section describes how to set up a python development environment on your
-system for running the code examples in this repository. If you already have a
-working python environment, clone the repository and run the [Demo
-Scripts](#demo-scripts) described above.
-
-## Windows Installation Instructions
-
-#### Cloning the repository
-
-On Windows, we recommend running the examples within the PyCharm development environment, however you are free to choose your environment and IDE. Here are instructions on how to set up PyCharm.
-
-1. Download and install **[Git for Windows](https://git-scm.com/downloads/win)**
-2. Download and install **[TortoiseGit](https://tortoisegit.org/)**. For most users, the correct version is **Windows installer (64-bit)**. Run the First Start wizard after installation and choose the default options.
-3. Download and install **[Python 3.12](https://www.python.org/downloads/release/python-3129/)**. More recent versions of Python might require additional steps to install the packages used by this codebase. For most users, the correct version is **Windows installer (64-bit)**
-
-4. Go to **[PyCharm](https://www.jetbrains.com/pycharm/download/?section=windows)** and download the **PyCharm Community** installer
-
-5. Clone this repository
-   1. Navigate to a folder on your machine where you would like to clone the repository
-   2. On this repository page, click the green **Code** button at the top and copy the repository URL by clicking the button to the right of the URL.
-   3. In Windows Explorer, right-click in the folder and choose Git Clone... On Windows 11, you will have to choose "Show More Options"
-      <table>
-          <tr><td>
-      <img src="/docs/images/git-clone.png" alt="TortoiseGit menu" height="400px">
-          </td> 
-          <td>
-              <img src="/docs/images/show-more-options.png" alt="Windows 11 contextual menu" height="400px">
-          </td></tr>
-          <tr><td>Git Clone using TortoiseGit</td>
-          <td>Need to click Show More Options on Windows 11</td></tr>
-      </table>
-   4. Clone the repository to a folder on your local machine
-      <table>
-          <tr><td>
-      <img src="/docs/images/git-clone-paths.png" alt="TortoiseGit settings" height="400px">
-          </td> 
-          </tr>
-          <tr><td>Clone repository using TortoiseGit</td>
-       </tr>
-      </table>
-
-#### Configuring PyCharm
-
-1. Plug in the GelSight Mini device to a USB port on your computer. The lights should turn on.
-1. Launch PyCharm and Open the gsrobotics folder you cloned following the instructions above. Choose **Trust Project** when prompted.
-1. The first time you open the gsrobotics folder, PyCharm will prompt you to create the virtual environment. This will automatically install the packages listed in the `requirements.txt` file. Click **OK** to create the environment.
-<table>
-<tr><td>
-<img src="/docs/images/create-virtual-environment.png" alt="Pycharm virtualenv" height="200px">
-</td>
-</tr>
-<tr><td>Create the virutal environment in PyCharm</td>
-</tr>
-</table>
-1. From the file navigator on the left, open the script `demo_liveview.py` in the root folder. Right-click in the file editor and choose **Run 'demo_liveview'**.
-<table>
-<tr><td>
-<img src="/docs/images/run_demo_liveview.png" alt="Run demo liveview" height="400px">
-</td>
-</tr>
-<tr><td>Run demo_liveview.py in PyCharm</td>
-</tr>
-</table>
-
-## Linux Installation Instructions
-
-### Cloning the repository
-
-1. Download and install **[Git for Linux](https://git-scm.com/downloads/linux)**
-2. Download and install **[Python 3.12](https://www.python.org/downloads/release/python-3129/)**. More recent versions of Python might require additional steps to install the packages used by this codebase.
-
-3. Go to **[PyCharm](https://www.jetbrains.com/help/pycharm/installation-guide.html#toolbox)** instalation guide and choose prefered way of intalation of **PyCharm Community** on linux.
-
-4. Clone this repository
-   1. Navigate to a folder on your machine where you would like to clone the repository
-   2. On this repository page, click the green **Code** button at the top and copy the repository URL by clicking the button to the right of the URL.
-   3. In Linux desired location, right-click in the folder and choose **open terminal**.
-   4. In the terminal type
-   ```sh
-   git clone repository_url
-   ```
-
-### Configuring PyCharm
-
-On Linux configuration process is the same as on Windows. In PyCharm open new project and select destination of your downloaded repository.
-In the same way as on Widnows, PyCharm will automatically ask you to create local environment and use `requirements.txt` as a source list of packages
-to install.
-
-## Device setup
-
-The camera on the GelSight Mini is a USB camera.
-
-If you need to adjust the camera settings for your application, you can change the camera parameters using any app or library that can control UVC cameras.
-
-### Linux camera settings
-
-A popular library is [v4l2-ctl](https://manpages.ubuntu.com/manpages/bionic/man1/v4l2-ctl.1.html).
-To install this library on ubuntu run,
-
-    sudo apt-get update
-    sudo apt-get -y install v4l-utils
-
-Refer to file config/mini_set_cam_params.sh present in this repository to view/edit all the available camera parameters.
-You can list the devices by running:
-
-    v4l2-ctl --list-devices
-
-In most cases when you have one Mini connected to your computer, the device ID is usually 2, because the webcam on your computer is always on device ID 0.
-
-### Windows camera settings
-
-On Windows, you can use the AMCap app to configure the camera settings, see https://docs.arducam.com/UVC-Camera/Quick-Start-for-Different-Systems/Windows/
-
-## Possible errors
-
-### With cv2
-
-    pip uninstall opencv-python-headless
-
-### With Docker container
-
-    sudo apt-get install libopenjp2-7
-    sudo apt-get install qt5-default
-    pip3 install opencv-python==4.1.2.30
-    sudo apt-get install libopenexr-dev
 
 # CAD Models
 The following CAD models can help you mount a GelSight Mini on different grippers or create your own adapter. 
