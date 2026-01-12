@@ -12,3 +12,13 @@ src/gelsight.egg-info/dependency_links.txt
 src/gelsight.egg-info/not-zip-safe
 src/gelsight.egg-info/requires.txt
 src/gelsight.egg-info/top_level.txt
+src/gelsight/utilities/__init__.py
+src/gelsight/utilities/fit_grid.py
+src/gelsight/utilities/image_processing.py
+src/gelsight/utilities/logger.py
+src/gelsight/utilities/markerdata_logger.py
+src/gelsight/utilities/normxcorr2.py
+src/gelsight/utilities/poisson_solver.py
+src/gelsight/utilities/reconstruction.py
+src/gelsight/utilities/ui_components.py
+src/gelsight/utilities/visualization.py

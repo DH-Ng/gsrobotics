@@ -15,13 +15,11 @@ License-File: LICENSE
 Requires-Dist: Kivy==2.3.1
 Requires-Dist: Kivy-Garden==0.1.5
 Requires-Dist: open3d>=0.18.0
-Requires-Dist: opencv-python==4.11.0.86
-Requires-Dist: pydantic==2.10.6
-Requires-Dist: pydantic_core==2.27.2
+Requires-Dist: opencv-python>=4.11.0.86
+Requires-Dist: pydantic>=2.10.6
+Requires-Dist: pydantic_core>=2.27.2
 Requires-Dist: scikit-image>=0.24.0
 Requires-Dist: scipy>=1.13.0
-Requires-Dist: torch==2.6.0
-Requires-Dist: torch==2.6.0
 Requires-Dist: pygrabber
 Dynamic: classifier
 Dynamic: description
