@@ -203,6 +203,7 @@ class GelSightMini:
         self.recording = False
 
         # flush black frames
+        print("Starting camera stream.")
         for _ in range(20):
             self.camera.read_frame()
         self.frame_count = 0
