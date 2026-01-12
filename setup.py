@@ -29,7 +29,7 @@ with (Path(__file__).resolve().parent / "VERSION").open() as f:
 setup(
     name="gelsight",
     package_dir={"": "src"},
-    packages=["gelsight"],
+    packages=find_packages(),
     author="",
     maintainer="",
     url="https://github.com/DH-Ng/gsrobotics",
