@@ -6,7 +6,7 @@ from typing import Optional
 
 def normalize_array(array: np.ndarray, min_divider: float = None) -> np.ndarray:
     """
-    Normalizes array of data. Desnt have to be image data.
+    Normalizes array of data. Doesnt have to be image data.
 
     Args:
         array (np.ndarray): array to normalize

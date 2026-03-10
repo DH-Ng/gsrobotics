@@ -33,7 +33,7 @@ git clone https://github.com/DH-Ng/gsrobotics.git
 2. Pip install the code
 ```
 cd gsrobotics
-pip install .
+pip install -e .
 ```
 
 ## Test the Installation

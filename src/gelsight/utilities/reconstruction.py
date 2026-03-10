@@ -1,3 +1,4 @@
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,6 +9,9 @@ from ..utilities.poisson_solver import poisson_dct_neumann
 from ..utilities.image_processing import mask_from_range, remove_masked_area
 from ..utilities.logger import log_message
 from typing import Optional
+
+from gelsight.config import default_config
+from gelsight import MODELS_DIR_PATH
 
 
 class RGB2NormNet(nn.Module):
@@ -47,6 +51,7 @@ class Reconstruction3D:
         image_width: int,
         image_height: int,
         use_gpu: bool = False,
+        net_path: str | None = None,
     ) -> None:
         """
         Initialize the Reconstruction3D class.
@@ -66,6 +71,16 @@ class Reconstruction3D:
         self.depth_map_zero_counter: int = 0
         self.depth_map_zero: np.ndarray = np.zeros((image_height, image_width))
         self.net: Optional[torch.nn.Module] = None
+
+        if net_path is None:
+            net_path = str(Path(MODELS_DIR_PATH + "/nnmini.pt").resolve())
+
+        # Load the trained network
+        if self.load_nn(net_path) is None:
+            log_message("Failed to load model. Exiting.")
+            return
+
+        self.ready = False
 
     def load_nn(self, net_path: str) -> Optional[torch.nn.Module]:
         """
@@ -180,6 +195,7 @@ class Reconstruction3D:
         depth_map = np.reshape(depth_map, (image_height, image_width))
 
         # Update zero depth map for the first 50 frames.
+        # print("test ", self.depth_map_zero_counter)
         if self.depth_map_zero_counter < 50:
             self.depth_map_zero += depth_map
             if self.depth_map_zero_counter == 0:
@@ -191,6 +207,7 @@ class Reconstruction3D:
 
         if self.depth_map_zero_counter == 50:
             log_message("Sensor is ready to use.")
+            self.ready = True
 
         self.depth_map_zero_counter += 1
 

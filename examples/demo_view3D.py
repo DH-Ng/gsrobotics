@@ -94,10 +94,10 @@ def View3D(config: ConfigModel):
         use_gpu=config.use_gpu,  # Change to True if you want to use CUDA.
     )
 
-    # Load the trained network using the existing method in reconstruction.py.
-    if reconstruction.load_nn(config.nn_model_path) is None:
-        log_message("Failed to load model. Exiting.")
-        return
+    # # Load the trained network using the existing method in reconstruction.py.
+    # if reconstruction.load_nn(config.nn_model_path) is None:
+    #     log_message("Failed to load model. Exiting.")
+    #     return
 
     if config.pointcloud_enabled:
         # Initialize the 3D Visualizer.
@@ -122,7 +122,7 @@ def View3D(config: ConfigModel):
     devices = cam_stream.get_device_list()
     log_message(f"Available camera devices: {devices}")
     # For testing, select device index 0 (adjust if needed).
-    cam_stream.select_device(config.default_camera_index)
+    cam_stream.select_device(device_idx=1)  # config.default_camera_index
     cam_stream.start()
 
     # Main loop: capture frames, compute depth map, and update the 3D view.
