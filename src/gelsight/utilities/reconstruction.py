@@ -120,7 +120,7 @@ class Reconstruction3D:
         via Poisson integration. Optionally, marker interpolation is applied.
 
         Args:
-            image (np.ndarray): The input RGB image.
+            image (np.ndarray): The input BGR image.
             markers_threshold (Optional[tuple[int, int]]): Tuple (min_mask_thresh, max_mask_thresh) which
                 defines values to be masked. If None, no masking occures.
             contact_mask (Optional[np.ndarray], optional): A contact mask defining regions of interest.
