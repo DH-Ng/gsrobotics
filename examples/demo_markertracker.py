@@ -175,35 +175,8 @@ class MarkerTrackerViewWidget(BoxLayout):
 
     def initialize(self, frame: np.ndarray):
         self.DRAW_MARKERS = False
-        img = np.float32(frame) / 255.0
-        self.markertracker = MarkerTracker(img)
+        self.markertracker = MarkerTracker(frame)I 
         self.data_logger = MarkerDataLogger()
-        frame_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-
-        marker_centers = self.markertracker.initial_marker_center
-        self.Ox = marker_centers[:, 1]
-        self.Oy = marker_centers[:, 0]
-        self.nct = len(marker_centers)
-
-        # Convert the first frame to grayscale
-        self.old_gray = frame_gray
-
-        # Set the parameters for the Lucas-Kanade method
-        self.lk_params = dict(
-            winSize=(15, 15),
-            maxLevel=2,
-            criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03),
-        )
-
-        # Existing p0 array
-        self.p0 = np.array([[self.Ox[0], self.Oy[0]]], np.float32).reshape(-1, 1, 2)
-        for i in range(self.nct - 1):
-            # New point to be added
-            new_point = np.array(
-                [[self.Ox[i + 1], self.Oy[i + 1]]], np.float32
-            ).reshape(-1, 1, 2)
-            # Append new point to p0
-            self.p0 = np.append(self.p0, new_point, axis=0)
 
     def update(self, dt):
         frame = self.main_app.cam_stream.update(dt)
@@ -231,50 +204,7 @@ class MarkerTrackerViewWidget(BoxLayout):
             self.image_widget.texture = texture
 
     def update_marker_view(self, frame: np.ndarray):
-        frame_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        p1, st, err = cv2.calcOpticalFlowPyrLK(
-            self.old_gray, frame_gray, self.p0, None, **self.lk_params
-        )
-
-        # Select good points
-        good_new = p1[st == 1]
-        good_old = self.p0[st == 1]
-
-        if len(good_new) < self.nct:
-            # Detect new features in the current frame
-            log_message(f"All pts did not converge")
-        else:
-            # Update points for next iteration
-            self.p0 = good_new.reshape(-1, 1, 2)
-
-        if self.is_logging_data:
-            self.data_logger.add_frame(positions=good_new)
-
-        # Draw the tracks
-        if self.DRAW_MARKERS:
-            # Create some random colors for visualizing the optical flow
-            self.color = np.random.randint(0, 255, (100, 3))
-
-        for i, (new, old) in enumerate(zip(good_new, good_old)):
-            a, b = new.ravel()
-            ix = int(self.Ox[i])
-            iy = int(self.Oy[i])
-            offrame = cv2.arrowedLine(
-                frame,
-                (ix, iy),
-                (int(a), int(b)),
-                (255, 255, 255),
-                thickness=1,
-                line_type=cv2.LINE_8,
-                tipLength=0.15,
-            )
-
-            if self.DRAW_MARKERS:
-                offrame = cv2.circle(
-                    offrame, (int(a), int(b)), 5, self.color[i].tolist(), -1
-                )
-
-        self.old_gray = frame_gray.copy()
+        self.markertracker.track_markers_with_optical_flow(frame)
 
     def stop(self):
         if self.event:

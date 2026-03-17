@@ -1,6 +1,9 @@
-import numpy as np
-import open3d
 from typing import Optional
+import copy
+
+import numpy as np
+from scipy.linalg import svd
+import open3d
 
 
 class Visualize3D:
@@ -30,6 +33,7 @@ class Visualize3D:
         save_path: str,
         window_width: int,
         window_height: int,
+        vis_coor_frame: bool = False,
     ) -> None:
         """
         Initialize the Visualize3D class.
@@ -45,6 +49,10 @@ class Visualize3D:
         self.pointcloud_size_y: int = pointcloud_size_y
         self.save_path: str = save_path
         self.file_counter: int = 0
+        self.vis_coor_frame: bool = vis_coor_frame
+
+        self.window_width = window_width
+        self.window_height = window_height
 
         # Initialize Open3D components (grid, point cloud, and visualizer)
         self.init_open3D(window_width=window_width, window_height=window_height)
@@ -94,6 +102,14 @@ class Visualize3D:
 
         self.visualizer.create_window(width=window_width, height=window_height)
         self.visualizer.add_geometry(self.pointcloud)
+
+        # For visualizing local coor. frame of indenter
+        if self.vis_coor_frame:
+            self.base_frame = open3d.geometry.TriangleMesh.create_coordinate_frame(
+                size=(self.pointcloud_size_x + self.pointcloud_size_y) / 10
+            )
+            self.coor_frame = copy.deepcopy(self.base_frame)
+            self.visualizer.add_geometry(self.coor_frame)
 
         # setup background color and initial camera view
         render_options = self.visualizer.get_render_option()
@@ -160,6 +176,35 @@ class Visualize3D:
         # Update the point cloud's points and colors.
         self.pointcloud.points = open3d.utility.Vector3dVector(self.points)
         self.pointcloud.colors = open3d.utility.Vector3dVector(colors)
+
+        if self.vis_coor_frame:
+            treshhold = (
+                1.15  # only use points that are in contact, e.g. indentation > 0.15mm
+            )
+            # Compute estimate for local coor. frame transformation
+            contact_mask = self.points[:, 2] > treshhold
+            # x = self.points[contact_mask, 0].mean()
+            # y = self.points[contact_mask, 1].mean()
+            # z = self.points[contact_mask, 2].mean()
+            if self.points[contact_mask].size:
+                t = self.points[contact_mask].mean(axis=0)
+            else:
+                # Center of depth map
+                t = np.array([depth_map.shape[1] / 2, depth_map.shape[0] / 2, 0])
+
+            # Update visualization
+            T = np.eye(4)
+            T[:3, 3] = t  # translation
+            R = open3d.geometry.get_rotation_matrix_from_xyz([0, 0, 0])
+            T[:3, :3] = R
+            # Reset frame so that previous transforms do not accumulate
+            self.coor_frame.vertices = copy.deepcopy(self.base_frame.vertices)
+            self.coor_frame.triangles = copy.deepcopy(self.base_frame.triangles)
+            self.coor_frame.vertex_normals = copy.deepcopy(
+                self.base_frame.vertex_normals
+            )
+            self.coor_frame.transform(T)
+            self.visualizer.update_geometry(self.coor_frame)
 
         # Refresh the visualizer.
         self.visualizer.update_geometry(self.pointcloud)

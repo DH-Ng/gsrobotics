@@ -3,6 +3,9 @@ import numpy as np
 from scipy.interpolate import griddata
 from typing import Optional
 
+from scipy.ndimage import gaussian_filter
+from scipy.ndimage import distance_transform_edt
+
 
 def normalize_array(array: np.ndarray, min_divider: float = None) -> np.ndarray:
     """
@@ -161,6 +164,60 @@ def matching_rows(A: np.ndarray, B: np.ndarray) -> np.ndarray:
     return np.unique(B[matches], axis=0)
 
 
+def nearest_fill_via_distance_transform(
+    image: np.ndarray, mask: np.ndarray
+) -> np.ndarray:
+    """
+    Fill pixels where mask != 0 by copying the nearest pixel from mask == 0.
+    mask should be binary (0 for known, non-zero for masked area).
+    """
+    # Ensure boolean mask where True==known (invert mask)
+    known = mask == 0
+
+    # If all pixels are masked or all are known, handle edge cases
+    if known.all():
+        return image.copy()
+    if not known.any():
+        return image.copy() * 0.0  # or raise, or return image
+
+    # Compute indices of nearest known pixel for every location
+    # return_indices gives arrays of shape (ndim, *image.shape) with indices per axis
+    distances, indices = distance_transform_edt(known == 0, return_indices=True)
+
+    dist, _ = distance_transform_edt(known == 0, return_indices=True)
+    print(
+        "dist masked: min/max/mean",
+        dist[mask != 0].min(),
+        dist[mask != 0].max(),
+        dist[mask != 0].mean(),
+    )
+
+    # indices is a tuple/array: first axis is row indices, second is col indices
+    row_idx = indices[0]
+    col_idx = indices[1]
+
+    out = image.copy().astype(image.dtype)
+    # For every masked pixel, copy value from nearest known pixel
+    masked_positions = np.nonzero(mask != 0)
+    out[masked_positions] = image[row_idx[masked_positions], col_idx[masked_positions]]
+
+    return out
+
+
+def smooth_interpolated_region(
+    image: np.ndarray, mask: np.ndarray, sigma: float = 1.0
+) -> np.ndarray:
+    """Smooths image in areas where mask is != 0."""
+
+    img = image.astype(float)
+    # blurred full image
+    blurred = gaussian_filter(img, sigma=sigma)
+    # keep original known pixels, use blurred for masked region
+    out = img.copy()
+    out[mask != 0] = blurred[mask != 0]
+    return out
+
+
 def interpolate_grad(image: np.ndarray, mask: np.ndarray) -> np.ndarray:
     """
     Interpolate image region defined by a binary mask using nearest neighbour.
@@ -174,17 +231,27 @@ def interpolate_grad(image: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
     Args:
         image (np.ndarray): 2D source image array
-        mask (np.ndarray): Binary mask array (defines interpolation area)
+        mask (np.ndarray): Binary mask array (defines interpolation area).
+                           Mask != 0 are the locations where the markers are.
+                           Here, interpolation should be applied by using gradients around the marker locations.
 
     Returns:
         np.ndarray: Image with interpolation applied to the masked area.
     """
+    image = image.astype(float)
 
     # Create a new mask around the edge of the original mask
     dilated_mask = dilate(image=mask, kernel_size=3, iterations=2)
-    mask_around = np.logical_and(dilated_mask > 0, mask == 0)
+    cv2.imshow("dilated_mask", dilated_mask)
 
-    # Indentify coordinates region for interpolation
+    dilated_mask_bigger = dilate(image=mask, kernel_size=5, iterations=2)
+    cv2.imshow("dilated_mask_bigger", dilated_mask_bigger)
+
+    mask_around = np.logical_and(dilated_mask_bigger > 0, dilated_mask == 0)
+    test = mask_around.astype(np.uint8) * 255
+    cv2.imshow("mask_around sampling points", test)
+
+    # Identify coordinates region for interpolation
     mask_around_trim = mask_around == 1
 
     # Generate coordinate grids
@@ -207,7 +274,6 @@ def interpolate_grad(image: np.ndarray, mask: np.ndarray) -> np.ndarray:
     interpolated_values = griddata(
         points=sample_points, values=sample_values, xi=target_points, method="nearest"
     )
-
     # Set potential Nan values to zero.
     interpolated_values[np.isnan(interpolated_values)] = 0.0
 
@@ -215,7 +281,83 @@ def interpolate_grad(image: np.ndarray, mask: np.ndarray) -> np.ndarray:
     interpolated_image = image.copy()
     interpolated_image[mask != 0] = interpolated_values
 
+    # smooth
+    # interpolated_image = smooth_interpolated_region(interpolated_image, mask)
+
+    # print("mask pixels:", np.count_nonzero(mask != 0))
+    # print("mask_around pixels:", np.count_nonzero(mask_around))
+    # print(
+    #     "overlap (should be 0):",
+    #     np.count_nonzero(np.logical_and(mask_around, mask != 0)),
+    # )
+    # print("sample_values range:", sample_values.min(), sample_values.max())
+    # print(
+    #     "interpolated_values range:",
+    #     np.nanmin(interpolated_values),
+    #     np.nanmax(interpolated_values),
+    # )
+    # # show a few mappings
+    # for i in range(min(5, len(target_points))):
+    #     x, y = target_points[i]
+    #     r, c = int(y), int(x)
+    #     print(i, (r, c), "orig:", image[r, c], "interp:", interpolated_values[i])
+
     return interpolated_image
+
+
+def remove_area_with_inpainting(image, mask):
+    # image = cv2.normalize(
+    #     image, None, alpha=0.0, beta=255.0, norm_type=cv2.NORM_MINMAX
+    # ).astype(np.uint8)
+    min = image.min()
+    max = image.max()
+    image = image + np.abs(min)
+    image = np.clip(image, 0, max) / max
+
+    image = (image * 255.0).astype(np.uint8)
+
+    # Create a new mask around the edge of the original mask
+    dilated_mask = dilate(image=mask, kernel_size=3, iterations=2)
+    dilated_mask = dilate(image=dilated_mask, kernel_size=3, iterations=2)
+    cv2.imshow("dilated_mask", dilated_mask)
+
+    # mask_around = np.logical_and(dilated_mask_bigger > 0, dilated_mask == 0)
+    # test = mask_around.astype(np.uint8) * 255
+    # cv2.imshow("mask_around sampling points", test)
+
+    # Identify coordinates region for interpolation
+    mask_around_trim = dilated_mask == 255  # mask_around == 1
+
+    cv2.imshow("inpainting area", mask_around_trim.astype(np.uint8) * 255)
+    mask8 = (mask_around_trim).astype(np.uint8)
+
+    inpainted = cv2.inpaint(
+        image, mask8, inpaintRadius=9, flags=cv2.INPAINT_TELEA
+    )  # cv2.INPAINT_TELEA
+
+    inpainted = cv2.GaussianBlur(inpainted, ksize=(3, 3), sigmaX=1.5)
+
+    # # Blend a narrow boundary band between original inpainted and blurred result to preserve outside details
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    # boundary = (cv2.dilate((mask != 0).astype(np.uint8), kernel, iterations=1) > 0) & (
+    #     ~(mask != 0)
+    # )
+    # out = inpainted.copy()
+    # if np.any(boundary):
+    #     # compute a weight ramp (0 at outside -> 1 inside), here simple constant blending near boundary
+    #     alpha = 0.6  # weight for blurred result in the boundary band (increase for stronger smoothing)
+    #     if out.ndim == 2:
+    #         orig_f = inpainted
+    #         out[boundary] = (1.0 - alpha) * orig_f[boundary] + alpha * out[boundary]
+    #     else:
+    #         orig_f = inpainted
+    #         out[boundary, :] = (1.0 - alpha) * orig_f[boundary, :] + alpha * out[
+    #             boundary, :
+    #         ]
+
+    # convert back to float
+    inpainted = inpainted / 255.0 * max - np.abs(min)
+    return inpainted
 
 
 def remove_masked_area(
@@ -234,9 +376,16 @@ def remove_masked_area(
             - Interpolated x-gradient (gx)
             - Interpolated y-gradient (gy)
     """
+    # gx_interpolate = interpolate_grad(image=gx.copy(), mask=mask)
+    # gy_interpolate = interpolate_grad(image=gy.copy(), mask=mask)
 
-    gx_interpolate = interpolate_grad(image=gx.copy(), mask=mask)
-    gy_interpolate = interpolate_grad(image=gy.copy(), mask=mask)
+    gx_interpolate = remove_area_with_inpainting(gx.copy(), mask)
+    gy_interpolate = remove_area_with_inpainting(gy.copy(), mask)
+    cv2.imshow("gx_orig ", gx)
+    cv2.imshow("gx_interpolated", gx_interpolate)
+
+    cv2.imshow("gy_orig ", gy)
+    cv2.imshow("gy_interpolated", gy_interpolate)
 
     return gx_interpolate, gy_interpolate
 

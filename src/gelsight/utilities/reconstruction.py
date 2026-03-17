@@ -6,7 +6,11 @@ import numpy as np
 import os
 import cv2
 from ..utilities.poisson_solver import poisson_dct_neumann
-from ..utilities.image_processing import mask_from_range, remove_masked_area
+from ..utilities.image_processing import (
+    mask_from_range,
+    remove_masked_area,
+    remove_area_with_inpainting,
+)
 from ..utilities.logger import log_message
 from typing import Optional
 
@@ -186,6 +190,7 @@ class Reconstruction3D:
 
         # Adjust gradients if marker interpolation is enabled.
         if markers_threshold:
+            # Interpolate gradients at marker locations to get a depth map without markers
             gradient_x, gradient_y = remove_masked_area(
                 gx=gradient_x, gy=gradient_y, mask=marker_mask
             )
@@ -193,6 +198,10 @@ class Reconstruction3D:
         # Reconstruct depth from gradients using Poisson integration.
         depth_map = poisson_dct_neumann(gx=gradient_x, gy=gradient_y)
         depth_map = np.reshape(depth_map, (image_height, image_width))
+
+        # if markers_threshold:
+        #     # depth_map = interpolate_depth_per_component(depth_map, marker_mask)
+        #     depth_map = remove_area_with_inpainting(depth_map.copy(), marker_mask)
 
         # Update zero depth map for the first 50 frames.
         # print("test ", self.depth_map_zero_counter)

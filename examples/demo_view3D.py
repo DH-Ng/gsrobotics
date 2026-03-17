@@ -26,11 +26,11 @@ def UpdateView(
     # Compute depth map and gradients.
     depth_map, contact_mask, grad_x, grad_y = reconstruction.get_depthmap(
         image=image,
-        markers_threshold=(config.marker_mask_min, config.marker_mask_max),
+        markers_threshold=(0, 70),  # (config.marker_mask_min, config.marker_mask_max),
     )
 
     if visualizer3D:
-        visualizer3D.update(depth_map, gradient_x=grad_x, gradient_y=grad_y)
+        visualizer3D.update(depth_map)  # , gradient_x=grad_x, gradient_y=grad_y)
 
     if np.isnan(depth_map).any():
         return
@@ -94,11 +94,6 @@ def View3D(config: ConfigModel):
         use_gpu=config.use_gpu,  # Change to True if you want to use CUDA.
     )
 
-    # # Load the trained network using the existing method in reconstruction.py.
-    # if reconstruction.load_nn(config.nn_model_path) is None:
-    #     log_message("Failed to load model. Exiting.")
-    #     return
-
     if config.pointcloud_enabled:
         # Initialize the 3D Visualizer.
         visualizer3D = Visualize3D(
@@ -107,6 +102,7 @@ def View3D(config: ConfigModel):
             save_path="",  # Provide a path if you want to save point clouds.
             window_width=int(config.pointcloud_window_scale * config.camera_width),
             window_height=int(config.pointcloud_window_scale * config.camera_height),
+            vis_coor_frame=True,
         )
     else:
         visualizer3D = None
