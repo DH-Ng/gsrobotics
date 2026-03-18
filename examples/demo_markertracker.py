@@ -175,7 +175,7 @@ class MarkerTrackerViewWidget(BoxLayout):
 
     def initialize(self, frame: np.ndarray):
         self.DRAW_MARKERS = False
-        self.markertracker = MarkerTracker(frame)I 
+        self.markertracker = MarkerTracker(frame)
         self.data_logger = MarkerDataLogger()
 
     def update(self, dt):

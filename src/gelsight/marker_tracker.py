@@ -528,7 +528,7 @@ class MarkerTracker:
             a, b = new.ravel()
             ix = int(self.Ox[i])
             iy = int(self.Oy[i])
-            offrame = cv2.arrowedLine(
+            marker_img = cv2.arrowedLine(
                 frame,
                 (ix, iy),
                 (int(a), int(b)),
@@ -539,9 +539,9 @@ class MarkerTracker:
             )
 
             if self.DRAW_MARKERS:
-                offrame = cv2.circle(
-                    offrame, (int(a), int(b)), 5, self.color[i].tolist(), -1
+                marker_img = cv2.circle(
+                    marker_img, (int(a), int(b)), 5, self.color[i].tolist(), -1
                 )
 
         self.old_gray = frame_gray.copy()
-        return good_new_pos, offrame
+        return good_new_pos, marker_img
