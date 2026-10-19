@@ -23,38 +23,32 @@ class Camera:
         self.cap = None
 
     def open(self) -> None:
-        """
-        Open the camera device using OpenCV.
-
-        Raises:
-            RuntimeError: If the camera cannot be opened.
-        """
+        self.release()
         self.cap = cv2.VideoCapture(self.device)
+
         if not self.cap.isOpened():
+            self.release()
             raise RuntimeError(f"Could not open camera device: {self.device}")
+    
 
     def read_frame(self) -> MatLike:
-        """
-        Read a frame from the camera.
-
-        Returns:
-            MatLike: The captured frame.
-
-        Raises:
-            RuntimeError: If the camera is not opened or frame capture fails.
-        """
-        if self.cap is None:
-            raise RuntimeError("Camera is not opened.")
-        ret, frame = self.cap.read()
-        if not ret:
-            raise RuntimeError("Failed to read frame from device.")
-        return frame
+        if self.cap is None or not self.cap.isOpened():
+            raise RuntimeError("Camera is not open.")
+    
+        # Retry brief/transient read failures before treating the device as disconnected.
+        for _ in range(3):
+            ret, frame = self.cap.read()
+            if ret and frame is not None:
+                return frame
+            time.sleep(0.05)
+    
+        raise RuntimeError("Failed to read frame from device.")
 
     def release(self) -> None:
         """
         Release the camera resource.
         """
-        if self.cap:
+        if self.cap is not None:
             self.cap.release()
             self.cap = None
 
@@ -136,6 +130,11 @@ class GelSightMini:
         self.video_writer = None
         self.serial_number = None
 
+        self._device_idx = None
+        self._device_selected = False
+        self._last_reconnect_time = 0.0
+
+
     def get_device_list(self) -> dict:
         """
         Get a dictionary of available camera devices.
@@ -145,54 +144,95 @@ class GelSightMini:
         """
         return Camera.list_devices()
 
-    def select_device(self, device_idx=None) -> None:
-        """
-        Select and open a camera device with the desired resolution.
+    def select_device(
+        self,
+        device_idx=None,
+        max_attempts=5,
+        retry_delay=1.0,
+    ) -> None:
+        self._device_idx = device_idx
+        self._device_selected = False
 
-        Args:
-            device_idx (int): The index of the device to select.
-        """
-
-        # print("platform: ", platform.system())
-
-        device_id = device_idx
-
-        if device_idx == None and platform.system() == "Windows":
-            (dev, desc) = Camera.find_cameras_windows("GelSight Mini")
-            print("Found: ", desc, ", dev: ", dev)
-            device_idx = dev
-            # Parse serial number from description
-            match = re.search("[A-Z0-9]{4}-[A-Z0-9]{4}", desc)
-            if match:
-                self.serial_number = match.group()
-
-        if platform.system() == "Linux":
-            if device_idx is None:
-                device_idx = 0
-            devices = Camera.list_devices()
-            # for ix in range(0, len(devices)):
-            #     print("Device: ", devices[ix])
-            if isinstance(devices.get(device_idx), str):
-                device_id = devices[device_idx]
-
-        if self.camera:
+        if self.camera is not None:
             self.camera.release()
+        self.camera = None
 
-        self.camera = Camera(device=device_id)
-        try:
-            self.camera.open()
-            # Set the camera resolution to target width and height.
-            self.camera.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.target_width)
-            self.camera.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.target_height)
+        last_error = None
 
-            current_width = self.camera.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-            current_height = self.camera.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-            log_message(
-                f"Camera opened successfully with resolution {current_width}x{current_height}!"
-            )
-        except Exception as e:
-            log_message(f"Could not open selected device: {e}")
+        for attempt in range(1, max_attempts + 1):
+            candidate = None
 
+            try:
+                os_name = platform.system()
+                device_id = device_idx
+
+                if os_name == "Windows":
+                    if device_idx is None:
+                        device_id, desc = Camera.find_cameras_windows("GelSight Mini")
+                        match = re.search(r"[A-Z0-9]{4}-[A-Z0-9]{4}", desc)
+                        if match:
+                            self.serial_number = match.group()
+
+                elif os_name == "Linux":
+                    index = 0 if device_idx is None else device_idx
+                    devices = Camera.list_devices()
+
+                    if index not in devices:
+                        raise RuntimeError(
+                            f"No camera at index {index}. Available devices: {devices}"
+                        )
+
+                    device_id = devices[index]
+
+                elif device_id is None:
+                    device_id = 0
+
+                if device_id is None:
+                    raise RuntimeError("Resolved camera device is None.")
+
+                candidate = Camera(device=device_id)
+                candidate.open()
+
+                candidate.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.target_width)
+                candidate.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.target_height)
+
+                self.camera = candidate
+                self._device_selected = True
+
+                width = candidate.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+                height = candidate.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                log_message(
+                    f"Camera opened successfully with resolution {width}x{height} "
+                    f"(attempt {attempt}/{max_attempts})."
+                )
+                return
+
+            except Exception as e:
+                last_error = e
+                if candidate is not None:
+                    candidate.release()
+
+                self.camera = None
+                log_message(
+                    f"Camera open attempt {attempt}/{max_attempts} failed: {e}"
+                )
+
+                if attempt < max_attempts:
+                    time.sleep(retry_delay)
+
+        raise RuntimeError(
+            f"Could not connect to camera after {max_attempts} attempts."
+        ) from last_error
+    
+    def _reconnect_camera(self) -> None:
+        log_message("Attempting to reconnect camera...")
+        time.sleep(0.5)
+        self.select_device(
+            self._device_idx,
+            max_attempts=5,
+            retry_delay=1.0,
+        )
+    
     def start(self) -> None:
         """
         Start the camera stream.
@@ -200,12 +240,18 @@ class GelSightMini:
         if not self.camera:
             log_message("Please select a device first!")
             return
-        self.recording = False
+        self.recording = False  
 
         # flush black frames
         print("Starting camera stream.")
         for _ in range(20):
-            self.camera.read_frame()
+            try:
+                self.camera.read_frame()
+            except RuntimeError as e:
+                log_message(f"Camera read failed during startup: {e}")
+                self._reconnect_camera()
+                break
+        
         self.frame_count = 0
 
     def start_recording(self, filepath: str = None) -> None:
@@ -263,13 +309,19 @@ class GelSightMini:
         Returns:
             Optional[MatLike]: The current RGB frame with FPS overlay, or None on error.
         """
-        if not self.camera:
+        if not self._device_selected:
             return None
+
+        if self.camera is None:
+            self._reconnect_camera()
+            if self.camera is None:
+                return None
 
         try:
             frame = self.camera.read_frame()
         except Exception as e:
             log_message(f"Error reading frame: {e}")
+            self._reconnect_camera()
             return None
 
         time_now = time.time()
