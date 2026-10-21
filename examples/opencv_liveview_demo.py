@@ -7,66 +7,59 @@ FULLWIDTH = 3280
 FULLHEIGHT = 2464
 
 # Image size and crop
-imgw = FULLWIDTH
-imgh = FULLHEIGHT
-brd_frac = 0
-
-imgw = 640  # FULLWIDTH
-imgh = 480  # FULLHEIGHT
+imgw = 640 
+imgh = 480 
 brd_frac = 0.15
-
 
 def show_image():
     counter = 0
     cam = GelSightMini(target_width=imgw, target_height=imgh, border_fraction=brd_frac)
 
-    deviceidx = cam.select_device()
+    # Note: select_device() does not return a value, it configures the object internally
+    cam.select_device()
 
     start = datetime.datetime.now()
 
     # Settings for FPS overlay
-    org = (50, 50)  # Bottom-left corner of the text
+    org = (50, 50)
     font = cv2.FONT_HERSHEY_SIMPLEX
     fontScale = 1
-    color = (255, 255, 255)  # White color in BGR
+    color = (255, 255, 255)
     thickness = 2
     nframeavg = 10
-    fpsstr = str(0)
+    fpsstr = "Calculating..."
 
     cam.start()
+    
+    print("Waiting for first frame...")
     while True:
-        if counter % nframeavg == 0:
-            frame_start = datetime.datetime.now()
-
         img = cam.update(1.0)
 
-        if img.shape[0] > 0:
-            counter = counter + 1
+        if img is not None:
+            # Use the FPS calculated inside the GelSightMini class
+            fpsstr = f"{cam.fps:.1f} FPS"
 
-            if counter >= nframeavg and counter % nframeavg == 0:
-                frame_end = datetime.datetime.now()
-                frame_time = frame_end - frame_start
-                fpstemp = nframeavg / frame_time.total_seconds()
-                fpsstr = f"{fpstemp:.1f} FPS"
-
-            # imshow assumes BGR order
             imbgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-
             cv2.putText(
                 imbgr, fpsstr, org, font, fontScale, color, thickness, cv2.LINE_AA
             )
             cv2.imshow("frame_rgb", imbgr)
+        else:
+            # Optional: print a message if the camera is struggling to provide frames
+            # print("Waiting for frame...")
+            pass
 
         if cv2.waitKey(1) == ord("q"):
             end = datetime.datetime.now()
             total_time = end - start
-            avg_time = total_time.total_seconds() / counter * 1000
-            fps = 1000 / avg_time
-            print(avg_time, fps)
+            if counter > 0:
+                avg_time = total_time.total_seconds() / counter * 1000
+                fps = 1000 / avg_time
+                print(f"Avg Time: {avg_time:.2f}ms, Avg FPS: {fps:.2f}")
             break
 
     cv2.destroyAllWindows()
-
+    cam.stop() # Important to stop the background thread!
 
 if __name__ == "__main__":
     show_image()
