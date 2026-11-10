@@ -1,4 +1,6 @@
 import cv2
+import numpy as np
+import numpy.typing as npt
 import platform
 import glob
 import time
@@ -106,6 +108,9 @@ class GelSightMini:
         self.serial_number = None
         self._device_idx = None
         self._device_selected = False
+
+        # Background image of sensor -> tactile RGB image without contact
+        self.background_img: MatLike | None = None
 
         # THREADING IMPROVEMENTS
         self._running = False
@@ -233,7 +238,16 @@ class GelSightMini:
                 self.camera.read_frame()
             except:
                 pass
-        
+
+        raw_frame = self.camera.read_frame()
+        self.background_img = cv2.cvtColor(raw_frame, cv2.COLOR_BGR2RGB)
+        self.background_img = crop_and_resize(
+            image=self.background_img,
+            target_size=(self.target_width, self.target_height),
+            border_fraction=self.border_fraction,
+        )
+        # cv2.imshow("bg img ",  cv2.cvtColor(self.background_img, cv2.COLOR_RGB2BGR))
+
         # IMPROVEMENT: Start the background capture thread
         self._running = True
         self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
